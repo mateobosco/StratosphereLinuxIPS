@@ -11,6 +11,7 @@ from datetime import timedelta
 import argparse
 import multiprocessing
 from multiprocessing import Queue
+from multiprocessing import Pipe
 import time
 from modules.markov_models_1 import __markov_models__
 from os import listdir
@@ -19,13 +20,14 @@ import logging
 import re
 import ConfigParser
 from ip_handler import IpHandler
-from utils import SignalHandler
 import random
 # Optional memory profiling
 #from memory_profiler import profile
 # Use with @profile
 
-version = '0.3.5'
+version = '0.4'
+global switch
+switch = True
 
 def timing(f):
     """ Function to measure the time another function takes."""
@@ -380,7 +382,7 @@ class Tuple(object):
 # Process
 class Processor(multiprocessing.Process):
     """ A class process to run the process of the flows """
-    def __init__(self, queue, slot_width, get_whois, verbose, amount, dontdetect, threshold, debug, whitelist, sdw_width, config, parsingfunction):
+    def __init__(self, queue, slot_width, get_whois, verbose, amount, dontdetect, threshold, debug, whitelist, classifier):
         multiprocessing.Process.__init__(self)
         self.get_whois = get_whois
         self.verbose = verbose
@@ -394,15 +396,17 @@ class Processor(multiprocessing.Process):
         self.slot_endtime = -1
         self.slot_width = slot_width
         self.dontdetect = dontdetect
-        self.ip_handler = IpHandler(self.verbose, self.debug,self.get_whois)
+        self.ip_handler = IpHandler(self.verbose, self.debug,self.get_whois, classifier)
         self.detection_threshold = threshold;
-        # Used to keep track in which time window we are currently in (also total amount of tw)
-        self.tw_index = 0
         self.ip_whitelist = whitelist
-        #CHANGE THIS
-        self.sdw_width = sdw_width
-        self.config = config
-        self.parsingfunction = parsingfunction
+        #register signal for interrupting
+        signal.signal(signal.SIGINT,self.handle_signal)
+
+    def handle_signal(self, signal, frame):
+        """Asynchronous interruption of the program"""
+        self.queue.close()
+        self.ip_handler.print_alerts()
+        sys.exit(0)
 
     def get_tuple(self, tuple4):
         """ Get the values and return the correct tuple for them """
@@ -443,10 +447,9 @@ class Processor(multiprocessing.Process):
                     if tuple.should_be_printed:
                         tuple.dont_print()
                 """
-            # Print all the addresses in this time window
-            self.ip_handler.print_addresses(self.slot_starttime, self.slot_endtime, self.tw_index, self.detection_threshold, self.sdw_width, False)
-            # Add 1 to the time window index 
-            self.tw_index +=1
+            # Process all the addresses in this time window
+            self.ip_handler.process_timewindow(self.slot_starttime, self.slot_endtime, self.detection_threshold)
+
             """
             # After each timeslot finishes forget the tuples that are too big. This is useful when a tuple has a very very long state that is not so useful to us. Later we forget it when we detect it or after a long time.
             ids_to_delete = []
@@ -463,8 +466,6 @@ class Processor(multiprocessing.Process):
             # Move the time window times
             self.slot_starttime = datetime.strptime(column_values[0], timeStampFormat)
             self.slot_endtime = self.slot_starttime + self.slot_width
-            #Clear previous TW in ip_handler
-            self.ip_handler.close_time_window()
 
             # If not the last TW. Put the last flow received in the next slot, because it overcome the threshold and it was not processed
             if not last_tw:
@@ -484,7 +485,7 @@ class Processor(multiprocessing.Process):
                 # Ask for the IpAddress object for this source IP
                 ip_address = self.ip_handler.get_ip(column_values[3])
                 # Store detection result into Ip_address
-                ip_address.add_detection(tuple.detected_label, tuple.id, tuple.current_size, flowtime, column_values[6], tuple.get_state_detected_last(), self.tw_index)
+                ip_address.add_detection(tuple.detected_label, tuple.id, tuple.current_size, flowtime, column_values[6], tuple.get_state_detected_last())
         except Exception as inst:
             print 'Problem in process_out_of_time_slot() in class Processor'
             print type(inst)     # the exception instance
@@ -576,7 +577,7 @@ class Processor(multiprocessing.Process):
                                         # Ask for IpAddress object 
                                         ip_address = self.ip_handler.get_ip(column_values[3])
                                         # Store detection result into Ip_address
-                                        ip_address.add_detection(tuple.detected_label, tuple.id, tuple.current_size, flowtime,column_values[6], tuple.get_state_detected_last(),self.tw_index)
+                                        ip_address.add_detection(tuple.detected_label, tuple.id, tuple.current_size, flowtime,column_values[6], tuple.get_state_detected_last())
                                 elif flowtime > self.slot_endtime:
                                     # Out of time slot
                                     self.process_out_of_time_slot(column_values, last_tw = False)
@@ -597,12 +598,6 @@ class Processor(multiprocessing.Process):
                             # Here for some reason we still miss the last flow. But since is just one i will let it go for now.
                         # Just Return
                         return True
-        except KeyboardInterrupt:
-            # Print Summary of detections in the last Time Window
-            #self.ip_handler.print_addresses(flowtime, flowtime, self.detection_threshold,self.sdw_width, True)
-            # Print final Alerts
-            #self.ip_handler.print_alerts()
-            return True
         except Exception as inst:
             print '\tProblem with Processor()'
             print type(inst)     # the exception instance
@@ -613,9 +608,15 @@ class Processor(multiprocessing.Process):
 ####################
 # Main
 ####################
+def signal_handler(signal, frame):
+    print "\nInterrupting slips"
+    #signal will be processed in the child process
+    pass
+        
+
 if __name__ == '__main__':  
     print 'Stratosphere Linux IPS. Version {}'.format(version)
-    print('https://stratosphereips.org')
+    print('https://stratosphereips.org\n')
 
     # Parse the parameters
     parser = argparse.ArgumentParser()
@@ -629,9 +630,8 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--folder', help='Folder with models to apply for detection.', action='store', required=False)
     parser.add_argument('-s', '--sound', help='Play a small sound when a periodic connections is found.', action='store_true', default=False, required=False)
     parser.add_argument('-t', '--threshold', help='Threshold for detection with IPHandler', action='store', default=0.002, required=False, type=float)
-    parser.add_argument('-S', '--sdw_width', help='Width of sliding window. The unit is in \time windows\'. So a -S 10 and a -w 5, means a sliding window of 50 minutes.', action='store', default=10, required=False, type=int)
-    parser.add_argument('-W','--whitelist',help="File with the IP addresses to whitelist. One per line.",action='store',required=False)
-    parser.add_argument('-r', '--filepath', help='Path to the binetflow file to be read.', required=False)
+    parser.add_argument('-W', '--whitelist', help="File with the IP addresses to whitelist. One per line.", action='store', required=False)
+    parser.add_argument('-c', '--classifier', help="File where serialized classifier.", action='store',required=False, default="rf_classifier.pickle", type=str)
     args = parser.parse_args()
 
     # Read the config file from the parameter
@@ -768,30 +768,21 @@ if __name__ == '__main__':
 
 
     # Create the thread and start it
-    processorThread = Processor(queue, timedelta(minutes=args.width), args.datawhois, args.verbose, args.amount, args.dontdetect, args.threshold, args.debug, whitelist, args.sdw_width, config, parsingfunction)
-    SH = SignalHandler(processorThread)
-    SH.register_signal(signal.SIGINT)
+    processorThread = Processor(queue, timedelta(minutes=args.width), args.datawhois, args.verbose, args.amount, args.dontdetect, args.threshold, args.debug, whitelist,args.classifier)
+    #start the process
     processorThread.start()
+    #register signal handler in parent process
+    signal.signal(signal.SIGINT,signal_handler)
 
-    if args.filepath:
-        if args.verbose > 2:
-            print 'Working with the file {} as parameter'.format(args.filepath)
-        f = open(args.filepath)
-        line = f.readline()
-        while line:
+
+    # Just put the lines in the queue as fast as possible
+    for line in sys.stdin:
             queue.put(line)
-            line = f.readline()
-        f.close()
-        if args.verbose > 2:
-            print "Finished reading the file. "
-        time.sleep(1)
-        queue.put('stop')
-    else:
-        # Just put the lines in the queue as fast as possible
-        for line in sys.stdin:
-            queue.put(line)
-        if args.verbose > 2:
-            print 'Finished receiving the input.'
-        # Shall we wait? Not sure. Seems that not
-        time.sleep(1)
-        queue.put('stop')
+    if args.verbose > 2:
+        print 'Finished receiving the input.'
+    # Shall we wait? Not sure. Seems that not
+    time.sleep(1)
+    queue.put('stop')
+    processorThread.join()
+
+    print "\nExiting Stratosphere IPS."

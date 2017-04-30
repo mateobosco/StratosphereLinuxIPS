@@ -1,38 +1,18 @@
-#!/usr/bin/python -u
+#!/usr/bin/python
 # This file is part of the Stratosphere Linux IPS
 # See the file 'LICENSE' for copying permission.
 # Authors: 
 # Ondrej Lukas - ondrej.lukas95@gmail.com, lukasond@fel.cvut.cz
 # Sebastian Garcia - sebastian.garcia@agents.fel.cvut.cz, eldraco@gmail.com
 
-import signal
 import re
-import time
 import sys
-
-class SignalHandler(object):
-    """Used for asynchronous control of the program -e.g. premature interrupting with CTRL+C """
-    def __init__(self,process):
-            self.process = process
-            self.active =True;
-
-    def register_signal(self, signal_n):
-        """Adds signal  to the handler to proccess it"""
-        signal.signal(signal_n,self.process_signal)
-
-    def process_signal(self,signal, frame):
-        #print "signal:{},frame:{},time:{}.".format(signal,frame,datetime.now())
-        if(self.active):
-            self.process.queue.close()
-            try:
-                print "\nInterupting SLIPS"
-                self.process.ip_handler.print_alerts()
-                time.sleep(0.5)
-            except Exception:
-                print "Sth went wrong"
-            time.sleep(1)
-            sys.exit(0)
-
+import pickle
+from math import log
+from sklearn.ensemble import RandomForestClassifier
+import time
+import os
+    
 
 class WhoisHandler(object):
     """This class is used for getting the whois information. Since queries to whois service takes too much time it stores all the information localy in the txt file.
@@ -63,6 +43,7 @@ class WhoisHandler(object):
             return False
         # is the ip in the cache
         try:
+            desc = ""
             desc = self.whois_data[ip]
             return desc
         except KeyError:
@@ -113,7 +94,35 @@ class WhoisHandler(object):
                 f.write('{}\t{}\n'.format(item[0],item[1]));
             f.close();
         else:
-            print "No new stuff in the dictionary"
+            print "No changes in the whois file."
+
+class Classifier(object):
+    """This class contains classifier from scikit-learn library"""
+
+    def __init__(self, filename):
+        self.rf = None
+        try:
+            with open(filename, 'r') as f:
+                self.rf = pickle.load(f)
+                print "Classifier '{}' loaded successfully".format(filename)
+        except IOError:
+            print "ERROR: Loading serialzied RandomForestClassifier from '{}' was NOT successful.".format(filename)
+            exit(1)
+
+    """Return list of logarithms of likelihood ratio"""
+    def get_log_likelihood(self, vector_list):
+        likelihoods = []
+        #get probabilities
+        results = self.rf.predict_proba(vector_list)
+        #compute log likelihood
+        for result in results:
+            if result[0] == 0:
+                likelihoods.append(log(sys.float_info.min))
+            elif result[1] == 0:
+                likelihoods.append(log(sys.float_info.max))
+            else:
+                likelihoods.append( log((result[0]/result[1]))) # possible zero division?
+        return likelihoods
 
 def deep_getsizeof(o, ids):
     """
