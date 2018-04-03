@@ -72,6 +72,7 @@ class WhoisHandler(object):
                 pass
             except IndexError:
                 # Some problem with the whois info. Continue
+                desc = ""
                 pass        
             except ipwhois.IPDefinedError as e:
                 if 'Multicast' in e:
