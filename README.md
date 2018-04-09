@@ -92,10 +92,12 @@ This alpha version of slips comes with the following features:
 
 
 ### TODO
+- Make sure that the whitelist IPS are not considered in the computation of the score.
 - Make a good reference to the installation of argus 3.x
 - Create a local DB of IPs so we can rememeber info about them (sqlite)
 - Add priories to the log: CRITIAL, etc.
 - If even the format of the flows change during the read, one idea is to search for an exception in the read of the format and then check which is the new format in the flow. Only check when there is an exception.
+- Filter out by Whois and not only ips
 
 ### Author and Contributors
 
