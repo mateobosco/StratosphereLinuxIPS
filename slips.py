@@ -526,7 +526,8 @@ class Processor(multiprocessing.Process):
                             # 0:starttime, 1:dur, 2:proto, 3:saddr, 4:sport, 5:dir, 6:daddr: 7:dport, 8:state, 9:stos,  10:dtos, 11:pkts, 12:bytes
                             #check if ip is not in whitelist
                             # TODO, transform the whitelist check into a has_key() so is faster.
-                            if not column_values[3] in self.ip_whitelist:
+                            #if not column_values[3] in self.ip_whitelist:
+                            if not column_values[3] in self.ip_whitelist and not column_values[6] in self.ip_whitelist :
                                 if self.slot_starttime == -1:
                                     # First flow
                                     try:
@@ -661,9 +662,10 @@ if __name__ == '__main__':
                 if args.verbose > 1:
                     print blue("Whitelisted IPs:")
                 for item in content:
-                    if args.verbose > 1:
-                        print blue("\t" + item)
-                whitelist = content
+                    if '#' not in item:
+                        if args.verbose > 1:
+                            print blue("\t" + item)
+                        whitelist.add(item)
         except Exception as e:
             print blue("Whitelist file '{}' not found!".format(args.whitelist))
 
