@@ -235,11 +235,15 @@ class IpAddress(object):
                                 print "\t\t{} [{}] ({}/{})".format(tuple4,whois,tuple_result[0],tuple_result[1])
                             else:
                                 print "\t\t{} ({}/{})".format(tuple4,tuple_result[0],tuple_result[1])
-                            if verbose > 5:
+                            if verbose > 6:
                                 for detection in self.tuples[tuple4]:
                                     #check if detection fits in the TW
                                     if (detection[2] >= start_time and detection[2] < end_time):
                                         print("\t\t\tDstIP: {}, Label:{:>40} , Detection Time:{}, State(100 max): {}").format(detection[3], detection[0], detection[2], detection[4][:100])
+                            elif verbose > 5:
+                                detection = self.tuples[tuple4][-1]
+                                if (detection[2] >= start_time and detection[2] < end_time):
+                                    print("\t\t\tDstIP: {}, Label:{:>40} , Detection Time:{}, State(100 max): {}").format(detection[3], detection[0], detection[2], detection[4][:100])
         except Exception as inst:
             print '\tProblem with print_last_result() in ip_handler.py'
             print type(inst)     # the exception instance
