@@ -165,7 +165,7 @@ class IpAddress(object):
             #self.last_verdict = None
             self.last_verdict = 'Unknown'
 
-    def print_last_result(self, verbose, start_time, end_time, threshold, use_whois, whois_handler):
+    def print_last_result(self, verbose, start_time, end_time, threshold, use_whois, whois_handler, min_amount, whoiswhitelist):
         """ 
         TODO: Update description
         Print information about the IPs. Both during the time window and at the end. Do the verbose printings better
@@ -177,6 +177,9 @@ class IpAddress(object):
                 # Print those tuples that have at least 1 detection
                 if verbose > 1 and verbose <= 3:
                     for tuple4 in self.tuples.keys():
+                        # If the amount of letters in the last detection of this tuple is less that the min amount, dont print anything
+                        if len(self.tuples[tuple4][-1][4]) < min_amount:
+                            continue
                         # Here we are checking for all the tuples of this IP in all the capture!! this is veryyy inefficient
                         tuple_result = self.result_per_tuple(tuple4, start_time, end_time)
                         # Is at least one tuple detected?
@@ -184,9 +187,11 @@ class IpAddress(object):
                             #Shall we use whois?
                             if use_whois:
                                 whois = whois_handler.get_whois_data(self.tuples[tuple4][0][3])
+                                #if whois not in whoiswhitelist:
                                 print "\t\t{} [{}] ({}/{})".format(tuple4,whois,tuple_result[0],tuple_result[1])
                             else:
-                                print "\t\t{} ({}/{})".format(tuple4,tuple_result[0],tuple_result[1])
+                                if whois not in whoiswhitelist:
+                                    print "\t\t{} ({}/{})".format(tuple4,tuple_result[0],tuple_result[1])
                             if verbose > 2:
                                 for detection in self.tuples[tuple4]:
                                     #check if detection fits in the TW
@@ -195,13 +200,18 @@ class IpAddress(object):
                 # Print those tuples that have at least 1 detection and also the ones that were not detected
                 elif verbose > 3:
                     for tuple4 in self.tuples.keys():
+                        # If the amount of letters in the last detection of this tuple is less that the min amount, dont print anything
+                        if len(self.tuples[tuple4][-1][4]) < min_amount:
+                            continue
                         tuple_result = self.result_per_tuple(tuple4,start_time,end_time)
                         # Shall we use whois?
                         if use_whois:
                             whois = whois_handler.get_whois_data(self.tuples[tuple4][0][3])
+                            #if whois not in whoiswhitelist:
                             print "\t\t{} [{}] ({}/{})".format(tuple4,whois,tuple_result[0],tuple_result[1])
                         else:
-                            print "\t\t{} ({}/{})".format(tuple4,tuple_result[0],tuple_result[1])
+                            if whois not in whoiswhitelist:
+                                print "\t\t{} ({}/{})".format(tuple4,tuple_result[0],tuple_result[1])
                         if verbose > 2:
                             for detection in self.tuples[tuple4]:
                                 #check if detection fits in the TW
@@ -226,12 +236,16 @@ class IpAddress(object):
                 print green("\t+{} verdict: {} (SDW score: {:.5f}) | TW weighted score: {} = {} x {}".format(self.address, self.last_verdict, self.last_SDW_score, last_tw_result_0, last_tw_result_1, last_tw_result_2))
                 if verbose > 4:
                     for tuple4 in self.tuples.keys():
+                        # If the amount of letters in the last detection of this tuple is less that the min amount, dont print anything
+                        if len(self.tuples[tuple4][-1][4]) < min_amount:
+                            continue
                         tuple_result = self.result_per_tuple(tuple4,start_time,end_time)
                         # Is at least one tuple checked?
                         if tuple_result[1] != 0:
                             #Shall we use whois?
                             if use_whois:
                                 whois = whois_handler.get_whois_data(self.tuples[tuple4][0][3])
+                                #if whois not in whoiswhitelist:
                                 print "\t\t{} [{}] ({}/{})".format(tuple4,whois,tuple_result[0],tuple_result[1])
                             else:
                                 print "\t\t{} ({}/{})".format(tuple4,tuple_result[0],tuple_result[1])
@@ -261,7 +275,8 @@ class IpAddress(object):
 
 class IpHandler(object):
     """Class which handles all IP actions for slips. Stores every IP object in the session, provides summary, statistics etc."""
-    def __init__(self, verbose, debug, whois):
+    def __init__(self, verbose, debug, whois, whoiswhitelist):
+        self.whoiswhitelist = whoiswhitelist
         self.addresses = {}
         self.verbose = verbose
         self.debug = debug
@@ -270,7 +285,7 @@ class IpHandler(object):
 
     # Using this decorator we can measure the time of a function
     # @timing
-    def print_addresses(self, start_time, end_time, tw_index, threshold, sdw_width, print_all):
+    def print_addresses(self, start_time, end_time, tw_index, threshold, sdw_width, print_all, min_amount):
         """ Print information about all the IP addresses in the time window specified in the parameters."""
         if self.debug:
             print "\tTimewindow index:{}, threshold:{},SDW width: {}".format(tw_index,threshold,sdw_width)
@@ -284,7 +299,7 @@ class IpHandler(object):
                 address.process_timewindow(start_time, end_time, tw_index, 10, threshold)
                 # Get a printable version of this IP's data
                 #string = address.print_last_result(self.verbose, start_time, end_time, threshold,self.whois, print_all, True)
-                address.print_last_result(self.verbose, start_time, end_time, threshold, self.whois, self.whois_handler)
+                address.print_last_result(self.verbose, start_time, end_time, threshold, self.whois, self.whois_handler, min_amount, self.whoiswhitelist)
                 #print "***********************"
         # If we should NOT print all the addresses, because we are inside a time window
         if not print_all:
@@ -295,7 +310,7 @@ class IpHandler(object):
                 address.process_timewindow(start_time, end_time, tw_index, 10, threshold)
                 # Get a printable version of this IP's data
                 #string = address.print_last_result(self.verbose, start_time, end_time, threshold,self.whois, print_all, True)
-                address.print_last_result(self.verbose, start_time, end_time, threshold, self.whois, self.whois_handler)
+                address.print_last_result(self.verbose, start_time, end_time, threshold, self.whois, self.whois_handler, min_amount, self.whoiswhitelist)
                 #print "***********************"
 
     def get_ip(self, ip_string):
