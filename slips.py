@@ -369,9 +369,10 @@ class Tuple(object):
 # Process
 class Processor(multiprocessing.Process):
     """ A class process to run the process of the flows """
-    def __init__(self, queue, slot_width, get_whois, verbose, amount, dontdetect, threshold, debug, whitelist, sdw_width):
+    def __init__(self, queue, slot_width, get_whois, verbose, amount, dontdetect, threshold, debug, whitelist, sdw_width, whoiswhitelist):
         multiprocessing.Process.__init__(self)
         self.get_whois = get_whois
+        self.whoiswhitelist = whoiswhitelist
         self.verbose = verbose
         self.debug = debug
         # The amount of letters requested to print minimum
@@ -383,7 +384,7 @@ class Processor(multiprocessing.Process):
         self.slot_endtime = -1
         self.slot_width = slot_width
         self.dontdetect = dontdetect
-        self.ip_handler = IpHandler(self.verbose, self.debug,self.get_whois)
+        self.ip_handler = IpHandler(self.verbose, self.debug, self.get_whois, self.whoiswhitelist)
         self.detection_threshold = threshold;
         # Used to keep track in which time window we are currently in (also total amount of tw)
         self.tw_index = 0
@@ -431,7 +432,7 @@ class Processor(multiprocessing.Process):
                         tuple.dont_print()
                 """
             # Print all the addresses in this time window
-            self.ip_handler.print_addresses(self.slot_starttime, self.slot_endtime, self.tw_index, self.detection_threshold, self.sdw_width, False)
+            self.ip_handler.print_addresses(self.slot_starttime, self.slot_endtime, self.tw_index, self.detection_threshold, self.sdw_width, False, self.amount)
             # Add 1 to the time window index 
             self.tw_index +=1
             """
@@ -524,9 +525,8 @@ class Processor(multiprocessing.Process):
                         try:
                             column_values = nline.split(',')
                             # 0:starttime, 1:dur, 2:proto, 3:saddr, 4:sport, 5:dir, 6:daddr: 7:dport, 8:state, 9:stos,  10:dtos, 11:pkts, 12:bytes
-                            #check if ip is not in whitelist
+                            # check if ip is not in whitelist
                             # TODO, transform the whitelist check into a has_key() so is faster.
-                            #if not column_values[3] in self.ip_whitelist:
                             if not column_values[3] in self.ip_whitelist and not column_values[6] in self.ip_whitelist :
                                 if self.slot_starttime == -1:
                                     # First flow
@@ -616,6 +616,7 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--threshold', help='Threshold for detection with IPHandler', action='store', default=0.002, required=False, type=float)
     parser.add_argument('-S', '--sdw_width', help='Width of sliding window. The unit is in \time windows\'. So a -S 10 and a -w 5, means a sliding window of 50 minutes.', action='store', default=10, required=False, type=int)
     parser.add_argument('-W','--whitelist',help="File with the IP addresses to whitelist. One per line.",action='store',required=False)
+    parser.add_argument('-H','--whoiswhitelist',help="File with the names of WHOIS names to whitelist. One per line. For example: Microsoft",action='store',required=False)
 
     args = parser.parse_args()
 
@@ -659,19 +660,26 @@ if __name__ == '__main__':
         try:
             content = set(line.rstrip('\n') for line in open(args.whitelist))
             if len(content) > 0:
-                if args.verbose > 1:
-                    print blue("Whitelisted IPs:")
                 for item in content:
                     if '#' not in item:
-                        if args.verbose > 1:
-                            print blue("\t" + item)
                         whitelist.add(item)
         except Exception as e:
             print blue("Whitelist file '{}' not found!".format(args.whitelist))
 
+    #Read whois whitelist
+    whoiswhitelist = set()
+    if args.whoiswhitelist:
+        try:
+            content = set(line.rstrip('\n') for line in open(args.whoiswhitelist))
+            if len(content) > 0:
+                for item in content:
+                    if '#' not in item:
+                        whoiswhitelist.add(item)
+        except Exception as e:
+            print blue("Whois Whitelist file '{}' not found!".format(args.whitelist))
 
     # Create the thread and start it
-    processorThread = Processor(queue, timedelta(minutes=args.width), args.datawhois, args.verbose, args.amount, args.dontdetect, args.threshold, args.debug, whitelist,args.sdw_width)
+    processorThread = Processor(queue, timedelta(minutes=args.width), args.datawhois, args.verbose, args.amount, args.dontdetect, args.threshold, args.debug, whitelist, args.sdw_width, whoiswhitelist)
     SH = SignalHandler(processorThread)
     SH.register_signal(signal.SIGINT)
     processorThread.start()
