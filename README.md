@@ -48,6 +48,7 @@ This alpha version of slips comes with the following features:
 - If you want to be alerted of any detection without looking at the screen you can specify -s to have a sound alert. You need to install the pygames libraries.
 - If you want to avoid doing any detection you should use -D.
 - If you want to anonymize the source IP addresses before doing any processing, you can use -A. This will force all the source IPs to be hashed to MD5 in memory. Also a file is created in the current folder with the relationship of original IP addresses and new hashed IP addresses. So you can later relate the detections.
+- You can whitelist the flows considered by using to filters. Whitelist of IPs (-W) and whitelist of Whois Organizations (-H).
 
 
 ## The use of verbose (-v)
@@ -91,6 +92,16 @@ This alpha version of slips comes with the following features:
 
 
 
+### Bugs
+- It seems that when we filter out with the whitelist, the line of the dst ip for the tuple, shows more than 1 dst ip!
+    
+    172.16.10.xxx-91.228.167.xxx-80-tcp [] (0/1)
+      DstIP: 91.228.167.xxx, Label:                                       0 , Detection Time:2018-04-20 00:59:09.546094, State(100 max): 45*U+U*
+      DstIP: 216.58.201.xx, Label:                                       0 , Detection Time:2018-04-20 00:57:56.499856, State(100 max): 99*i*z*i*i*i*i*i*i*
+      DstIP: 40.101.49.xx, Label:  From-Botnet-TCP-HTTP-CC.BitcoinMiner-1 , Detection Time:2018-04-20 00:57:16.406624, State(100 max): 99.Z+z+
+
+I think this is something with the printing only.
+
 ### TODO
 - The date of detection at the end is the current date of the analyst and not the date in the file. Put both.
 - Make sure that the whitelist IPS are not considered in the computation of the score.
@@ -98,7 +109,6 @@ This alpha version of slips comes with the following features:
 - Create a local DB of IPs so we can rememeber info about them (sqlite)
 - Add priories to the log: CRITIAL, etc.
 - If even the format of the flows change during the read, one idea is to search for an exception in the read of the format and then check which is the new format in the flow. Only check when there is an exception.
-- Filter out by Whois and not only ips
 
 ### Author and Contributors
 
