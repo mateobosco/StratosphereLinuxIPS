@@ -92,6 +92,7 @@ This alpha version of slips comes with the following features:
 
 
 ### TODO
+- The date of detection at the end is the current date of the analyst and not the date in the file. Put both.
 - Make sure that the whitelist IPS are not considered in the computation of the score.
 - Make a good reference to the installation of argus 3.x
 - Create a local DB of IPs so we can rememeber info about them (sqlite)
