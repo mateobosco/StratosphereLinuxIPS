@@ -616,7 +616,7 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--threshold', help='Threshold for detection with IPHandler', action='store', default=0.002, required=False, type=float)
     parser.add_argument('-S', '--sdw_width', help='Width of sliding window. The unit is in \time windows\'. So a -S 10 and a -w 5, means a sliding window of 50 minutes.', action='store', default=10, required=False, type=int)
     parser.add_argument('-W','--whitelist',help="File with the IP addresses to whitelist. One per line.",action='store',required=False)
-    parser.add_argument('-H','--whoiswhitelist',help="File with the names of WHOIS names to whitelist. One per line. For example: Microsoft",action='store',required=False)
+    parser.add_argument('-H','--whoiswhitelist',help="File with the names of WHOIS names to whitelist. One per line. Should match the whois printed by slips perfectly. For example: Microsoft Corporation,US",action='store',required=False)
 
     args = parser.parse_args()
 
@@ -639,7 +639,6 @@ if __name__ == '__main__':
         import pygame.mixer
         pygame.mixer.init(44100)
         pygame.mixer.music.load('periodic.ogg')
-
 
     # Read the folder with models if specified
     if args.folder:
