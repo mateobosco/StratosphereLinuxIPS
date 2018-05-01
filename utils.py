@@ -28,6 +28,9 @@ class SignalHandler(object):
         sys.exit(0)
 
 class WhoisHandler(object):
+    """
+    Class that handles all the whois data transactions and cache
+    """
     def __init__(self,whois_file):
         self.whois_data = {}
         self.filename = whois_file
@@ -46,22 +49,30 @@ class WhoisHandler(object):
             pass
     
     def get_whois_data(self,ip):
-        #do we have it in the cache?
+        query_whois = False
         try:
             import ipwhois
         except ImportError:
             print 'The ipwhois library is not install. pip install ipwhois'
             return False
-        # is the ip in the cache
+
+        # is the ip in the cache?
         try:
             desc = self.whois_data[ip]
-            return desc
+            if desc == '':
+                query_whois = True
+            else:
+                return desc
         except KeyError:
-            # Is not, so just ask for it
+            query_whois = True
+
+        # Is not, so just ask for it
+        if query_whois:
             try:
                 obj = ipwhois.IPWhois(ip)
                 data = obj.lookup_whois()
                 try:
+                    # For some reason, we are adding the country.
                     desc = data['nets'][0]['description'].strip().replace('\n',' ') + ',' + data['nets'][0]['country']
                 except AttributeError:
                     # There is no description field
@@ -81,13 +92,6 @@ class WhoisHandler(object):
             # Store in the cache
             self.whois_data[ip] = desc
             return desc
-        except Exception as inst:
-            print '\tProblem with get_whois_data() in utils.py'
-            print type(inst)     # the exception instance
-            print inst.args      # arguments stored in .args
-            print inst           # __str__ allows args to printed directly
-            sys.exit(1)
-
 
     def store_whois_data_in_file(self):
         """ TODO: Description"""
