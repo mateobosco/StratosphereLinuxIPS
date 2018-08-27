@@ -31,9 +31,9 @@ def timing(f):
         return ret
     return wrap
 
-#Tuple
+# Tuple
 class Tuple(object):
-    """ The class to simply handle tuples """
+    """ The class to handle tuples and all their properties """
     def __init__(self, tuple4):
         self.id = tuple4
         self.amount_of_flows = 0
@@ -520,47 +520,52 @@ class Processor(multiprocessing.Process):
                 if not self.queue.empty():
                     line = self.queue.get()
                     if 'stop' != line:
+                        # We didn't received the stop signal, so continue
                         # Process this flow
+                        # Only use the first 13 fields
                         nline = ','.join(line.strip().split(',')[:13])
                         try:
+                            # Create columns
                             column_values = nline.split(',')
                             # 0:starttime, 1:dur, 2:proto, 3:saddr, 4:sport, 5:dir, 6:daddr: 7:dport, 8:state, 9:stos,  10:dtos, 11:pkts, 12:bytes
+                            # Whitelist check
                             # check if ip is not in whitelist
                             # TODO, transform the whitelist check into a has_key() so is faster.
                             if not column_values[3] in self.ip_whitelist and not column_values[6] in self.ip_whitelist :
                                 if self.slot_starttime == -1:
-                                    # First flow
+                                    # First flow in this time windows
                                     try:
                                         self.slot_starttime = datetime.strptime(column_values[0], '%Y/%m/%d %H:%M:%S.%f')
                                     except ValueError:
                                         continue
+                                    # This is the time when this time window should end
                                     self.slot_endtime = self.slot_starttime + self.slot_width
+                                # Time of the current flow
                                 flowtime = datetime.strptime(column_values[0], '%Y/%m/%d %H:%M:%S.%f')
+                                # Is the current flow inside the time window?
                                 if flowtime >= self.slot_starttime and flowtime < self.slot_endtime:
-                                    # Inside the slot
+                                    # Inside the time window
+                                    # Create the tuple
                                     tuple4 = column_values[3]+'-'+column_values[6]+'-'+column_values[7]+'-'+column_values[2]
+                                    # Create the tuple object
                                     tuple = self.get_tuple(tuple4)
+                                    # Store the tuple in the current time window
                                     self.tuples_in_this_time_slot[tuple.get_id()] = tuple
                                     # If this is the first time the tuple appears in this time windows, put it in red
                                     if self.verbose:
                                         if len(tuple.state) == 0:
                                             tuple.set_color(red)
+                                    # Add the new flow inside the tuple
                                     tuple.add_new_flow(column_values)
-                                    """
-                                    tuple.do_print()
-                                    """
-                                    # After the flow has been added to the tuple, only work with the ones having more than X amount of flows
-                                    # Check that this is working correclty comparing it to the old program
+                                    # After the flow has been added to the tuple, only work with the tuples having more than X amount of flows
+                                    # TODO: Check that this is working correclty comparing it to the old program
                                     if len(tuple.state) >= self.amount:
-                                        """
-                                        tuple.do_print()
-                                        """
                                         # Detection
                                         self.detect(tuple)
-                                        # Ask for IpAddress object 
+                                        # Ask for the IpAddress object of the src ip
                                         ip_address = self.ip_handler.get_ip(column_values[3])
-                                        # Store detection result into Ip_address
-                                        ip_address.add_detection(tuple.detected_label, tuple.id, tuple.current_size, flowtime,column_values[6], tuple.get_state_detected_last(),self.tw_index)
+                                        # Store detection result into Ip_address. column_values[6] is the dest addr
+                                        ip_address.add_detection(tuple.detected_label, tuple.id, tuple.current_size, flowtime, column_values[6], tuple.get_state_detected_last(), self.tw_index)
                                 elif flowtime > self.slot_endtime:
                                     # Out of time slot
                                     self.process_out_of_time_slot(column_values, last_tw = False)
@@ -679,8 +684,10 @@ if __name__ == '__main__':
 
     # Create the thread and start it
     processorThread = Processor(queue, timedelta(minutes=args.width), args.datawhois, args.verbose, args.amount, args.dontdetect, args.threshold, args.debug, whitelist, args.sdw_width, whoiswhitelist)
+    # See what this SH is doing
     SH = SignalHandler(processorThread)
     SH.register_signal(signal.SIGINT)
+    # Start the thread that is going to take care of the detection and processing
     processorThread.start()
 
     # Just put the lines in the queue as fast as possible
