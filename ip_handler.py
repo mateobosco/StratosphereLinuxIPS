@@ -56,21 +56,21 @@ class IpAddress(object):
         # The detection structure is a 3-tuple of a label, the number of chars when it was detected and when it was detected
         detection = (label, n_chars, input_time, dest_add, state)
         self.last_time = input_time
-        #first time we see this tuple
-        if(not self.tuples.has_key(tuple)):
+        # Is this first time we see this tuple?
+        if (not self.tuples.has_key(tuple)):
             self.tuples[tuple] = []
         #add detection to array
         self.tuples[tuple].append(detection)
 
     def result_per_tuple(self, tuple, start_time, end_time):       
-        """ TODO: Put description """
+        """ Returns the amount of times this tuple was detected as malicious in a given time windows and the amount of times checked """
         try:
             # This counts the amount of times this tuple was detected by any model
             n_malicious = 0
             # This counts the amount of times this tuple was checked
             count = 0
             for detection in self.tuples[tuple]:
-                #check if this detection belongs to the TimeWindow
+                # check if this detection belongs to the TimeWindow
                 if (detection[2] >= start_time and detection[2] < end_time):
                     count += 1
                     if detection[0] != False:
@@ -82,13 +82,6 @@ class IpAddress(object):
             print inst.args      # arguments stored in .args
             print inst           # __str__ allows args to printed directly
             sys.exit(1)
-
-    def tuple_occured_in_tw(self,start_time,end_time,tuple4):
-        """ TODO: Put description """
-        for detection in self.tuples[tuple4]:
-            if (detection[2] >= start_time and detection[2] < end_time):
-                return True
-        return False
 
     def get_weighted_score(self, start_time, end_time, tw_index):
         """ This is the main function that computes if the IP should be detected or not based on the tw, the thresholds, the average, etc."""
@@ -133,11 +126,12 @@ class IpAddress(object):
 
     def get_verdict(self, start_time, end_time, tw_index, sdw_width, threshold):
         """This function uses sliding detection window (SDW) to compute mean of last n time windows weighted score"""
+
         # Get the weighted score
         self.get_weighted_score(start_time,end_time,tw_index)
         
         if self.ws_per_tw.has_key(tw_index): #traffic in this TW
-            startindex = tw_index-sdw_width #compute SDW indices
+            startindex = tw_index - sdw_width #compute SDW indices
             if startindex < 0:
                 startindex = 0
             sdw = []
@@ -162,7 +156,6 @@ class IpAddress(object):
                 self.last_verdict = "Malicious"
                 self.last_SDW_score = mean
         else:
-            #self.last_verdict = None
             self.last_verdict = 'Unknown'
 
     def print_last_result(self, verbose, start_time, end_time, threshold, use_whois, whois_handler, min_amount, whoiswhitelist):
@@ -282,6 +275,9 @@ class IpAddress(object):
         """ Returns all the alerts stored in the IP object"""
         return self.alerts
 
+
+
+
 class IpHandler(object):
     """Class which handles all IP actions for slips. Stores every IP object in the session, provides summary, statistics etc."""
     def __init__(self, verbose, debug, whois, whoiswhitelist):
@@ -303,31 +299,28 @@ class IpHandler(object):
             print "\nFinal summary using the complete capture as a unique Time Window (Threshold = %f):" %(threshold)
             # For all the addresses stored in total
             for address in self.addresses.values():
-                # print "********BEGINNIG {} *******".format(address.address)
                 # Process this IP for the time window specified. So we can compute the detection value.
                 address.process_timewindow(start_time, end_time, tw_index, 10, threshold)
                 # Get a printable version of this IP's data
                 #string = address.print_last_result(self.verbose, start_time, end_time, threshold,self.whois, print_all, True)
                 address.print_last_result(self.verbose, start_time, end_time, threshold, self.whois, self.whois_handler, min_amount, self.whoiswhitelist)
-                #print "***********************"
         # If we should NOT print all the addresses, because we are inside a time window
+        # Not sure if this is working...
         if not print_all:
             # We should not process all the ips here...
             for address in self.addresses.values():
-                # print "********BEGINNIG {} *******".format(address.address)
                 # Process this IP for the time window specified. So we can compute the detection value.
                 address.process_timewindow(start_time, end_time, tw_index, 10, threshold)
                 # Get a printable version of this IP's data
                 #string = address.print_last_result(self.verbose, start_time, end_time, threshold,self.whois, print_all, True)
                 address.print_last_result(self.verbose, start_time, end_time, threshold, self.whois, self.whois_handler, min_amount, self.whoiswhitelist)
-                #print "***********************"
 
     def get_ip(self, ip_string):
-        """ TODO put description here"""
-        #Have I seen this IP before?
+        """ Sees if we have the IP in our list of ips. And if not, it adds it"""
+        # Have I seen this IP before?
         try:
             ip = self.addresses[ip_string]
-        # No, create it
+        # No, create it and add it to this object
         except KeyError:
             ip = IpAddress(ip_string, self.verbose, self.debug)
             self.addresses[ip_string] = ip
