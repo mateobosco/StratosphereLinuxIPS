@@ -321,8 +321,9 @@ class IpHandler(object):
         return ip
 
     def print_alerts(self):
-        """ TODO put description here"""
+        """ For each IP, get the alerts, print them and put them in a file"""
         detected_counter = 0
+        # Store the whois information we found in the whois file.
         self.whois_handler.store_whois_data_in_file()
         print '\nFinal Alerts generated:'
         f = open(filename,"w")
