@@ -187,7 +187,7 @@ class IpAddress(object):
                                     print "\t\t{} ({}/{})".format(tuple4,tuple_result[0],tuple_result[1])
                             if verbose > 2:
                                 for detection in self.tuples[tuple4]:
-                                    #check if detection fits in the TW
+                                    # Check if detection fits in the TW
                                     if (detection[2] >= start_time and detection[2] < end_time):
                                         print("\t\t\tDstIP: {}, Label:{:>40} , Detection Time:{}, State(100 max): {}").format(detection[3], detection[0], detection[2], detection[4][:100])
                 # Print those tuples that have at least 1 detection and also the ones that were not detected
@@ -337,7 +337,6 @@ class IpHandler(object):
                 for alert in ip.get_alerts():
                     print "\t\t" + str(alert)
                     f.write( '\t\t' + str(alert) + '\n')
-
         s = "{} IP(s) out of {} detected as malicious.".format(detected_counter,len(self.addresses.keys()))
         f.write(s)
         print s
