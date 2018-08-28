@@ -267,10 +267,6 @@ class IpAddress(object):
             print inst           # __str__ allows args to printed directly
             sys.exit(1)
 
-    def process_timewindow(self, start_time, end_time, tw_index, sdw_width, swd_threshold,):
-        """ For this IP, see if we should report a detection or not based on the thresholds and TW"""
-        self.get_verdict(start_time, end_time, tw_index, sdw_width, swd_threshold)
-
     def get_alerts(self):
         """ Returns all the alerts stored in the IP object"""
         return self.alerts
@@ -300,10 +296,11 @@ class IpHandler(object):
             # For all the addresses stored in total
             for address in self.addresses.values():
                 # Process this IP for the time window specified. So we can compute the detection value.
-                address.process_timewindow(start_time, end_time, tw_index, 10, threshold)
+                #address.process_timewindow(start_time, end_time, tw_index, 10, threshold)
+                address.get_verdict(start_time, end_time, tw_index, 10, threshold)
                 # Get a printable version of this IP's data
-                #string = address.print_last_result(self.verbose, start_time, end_time, threshold,self.whois, print_all, True)
-                address.print_last_result(self.verbose, start_time, end_time, threshold, self.whois, self.whois_handler, min_amount, self.whoiswhitelist)
+                #address.print_last_result(self.verbose, start_time, end_time, threshold, self.whois, self.whois_handler, min_amount, self.whoiswhitelist)
+                address.get_verdict(self.verbose, start_time, end_time, threshold, self.whois, self.whois_handler, min_amount, self.whoiswhitelist)
         # If we should NOT print all the addresses, because we are inside a time window
         # Not sure if this is working...
         if not print_all:
