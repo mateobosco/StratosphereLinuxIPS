@@ -31,7 +31,7 @@ class WhoisHandler(object):
     """
     Class that handles all the whois data transactions and cache
     """
-    def __init__(self,whois_file):
+    def __init__(self, whois_file):
         self.whois_data = {}
         self.filename = whois_file
         try:
