@@ -296,20 +296,17 @@ class IpHandler(object):
             # For all the addresses stored in total
             for address in self.addresses.values():
                 # Process this IP for the time window specified. So we can compute the detection value.
-                #address.process_timewindow(start_time, end_time, tw_index, 10, threshold)
                 address.get_verdict(start_time, end_time, tw_index, 10, threshold)
                 # Get a printable version of this IP's data
-                #address.print_last_result(self.verbose, start_time, end_time, threshold, self.whois, self.whois_handler, min_amount, self.whoiswhitelist)
-                address.get_verdict(self.verbose, start_time, end_time, threshold, self.whois, self.whois_handler, min_amount, self.whoiswhitelist)
+                address.print_last_result(self.verbose, start_time, end_time, threshold, self.whois, self.whois_handler, min_amount, self.whoiswhitelist)
         # If we should NOT print all the addresses, because we are inside a time window
         # Not sure if this is working...
         if not print_all:
             # We should not process all the ips here...
             for address in self.addresses.values():
                 # Process this IP for the time window specified. So we can compute the detection value.
-                address.process_timewindow(start_time, end_time, tw_index, 10, threshold)
+                address.get_verdict(start_time, end_time, tw_index, 10, threshold)
                 # Get a printable version of this IP's data
-                #string = address.print_last_result(self.verbose, start_time, end_time, threshold,self.whois, print_all, True)
                 address.print_last_result(self.verbose, start_time, end_time, threshold, self.whois, self.whois_handler, min_amount, self.whoiswhitelist)
 
     def get_ip(self, ip_string):
