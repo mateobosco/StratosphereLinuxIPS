@@ -48,7 +48,8 @@ class WhoisHandler(object):
             print "Whois informaton file:'{}' doesn't exist!".format(self.filename)
             pass
     
-    def get_whois_data(self,ip):
+    def get_whois_data(self, ip):
+        """ Give back information about the Whois for the given IP"""
         query_whois = False
         try:
             import ipwhois
@@ -94,7 +95,7 @@ class WhoisHandler(object):
             return desc
 
     def store_whois_data_in_file(self):
-        """ TODO: Description"""
+        """ Open the known whois file and write the data we have in this object to the file"""
         f = open(self.filename,"w")
         for item in self.whois_data.items():
             f.write('{}___{}\n'.format(item[0],item[1]));
