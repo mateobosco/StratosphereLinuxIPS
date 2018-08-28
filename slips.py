@@ -371,7 +371,8 @@ class Processor(multiprocessing.Process):
     """ A class process to run the process of the flows """
     def __init__(self, queue, slot_width, get_whois, verbose, amount, dontdetect, threshold, debug, whitelist, sdw_width, whoiswhitelist):
         multiprocessing.Process.__init__(self)
-        self.get_whois = get_whois
+        # Should we get the whois data?
+        self.get_whois = get_whois 
         self.whoiswhitelist = whoiswhitelist
         self.verbose = verbose
         self.debug = debug
