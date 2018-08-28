@@ -128,7 +128,7 @@ class IpAddress(object):
         """This function uses sliding detection window (SDW) to compute mean of last n time windows weighted score"""
 
         # Get the weighted score
-        self.get_weighted_score(start_time,end_time,tw_index)
+        self.get_weighted_score( start_time, end_time, tw_index)
         
         if self.ws_per_tw.has_key(tw_index): #traffic in this TW
             startindex = tw_index - sdw_width #compute SDW indices
